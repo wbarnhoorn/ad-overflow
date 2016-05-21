@@ -1,9 +1,9 @@
-// generated on 2016-05-21 using generator-webapp 2.1.0
-const gulp = require('gulp');
-const gulpLoadPlugins = require('gulp-load-plugins');
-const browserSync = require('browser-sync');
-const del = require('del');
-const wiredep = require('wiredep').stream;
+// generated on 2016-05-20 using generator-gulp-webapp 1.1.1
+import gulp from 'gulp';
+import gulpLoadPlugins from 'gulp-load-plugins';
+import browserSync from 'browser-sync';
+import del from 'del';
+import {stream as wiredep} from 'wiredep';
 
 const $ = gulpLoadPlugins();
 const reload = browserSync.reload;
@@ -34,46 +34,44 @@ gulp.task('scripts', () => {
 });
 
 function lint(files, options) {
-  return gulp.src(files)
-    .pipe(reload({stream: true, once: true}))
-    .pipe($.eslint(options))
-    .pipe($.eslint.format())
-    .pipe($.if(!browserSync.active, $.eslint.failAfterError()));
+  return () => {
+    return gulp.src(files)
+      .pipe(reload({stream: true, once: true}))
+      .pipe($.eslint(options))
+      .pipe($.eslint.format())
+      .pipe($.if(!browserSync.active, $.eslint.failAfterError()));
+  };
 }
+const testLintOptions = {
+  env: {
+    mocha: true
+  }
+};
 
-gulp.task('lint', () => {
-  return lint('app/scripts/**/*.js', {
-    fix: true
-  })
-    .pipe(gulp.dest('app/scripts'));
-});
-gulp.task('lint:test', () => {
-  return lint('test/spec/**/*.js', {
-    fix: true,
-    env: {
-      mocha: true
-    }
-  })
-    .pipe(gulp.dest('test/spec/**/*.js'));
-});
+gulp.task('lint', lint('app/scripts/**/*.js'));
+gulp.task('lint:test', lint('test/spec/**/*.js', testLintOptions));
 
 gulp.task('html', ['styles', 'scripts'], () => {
   return gulp.src('app/*.html')
     .pipe($.useref({searchPath: ['.tmp', 'app', '.']}))
     .pipe($.if('*.js', $.uglify()))
-    .pipe($.if('*.css', $.cssnano({safe: true, autoprefixer: false})))
+    .pipe($.if('*.css', $.cssnano()))
     .pipe($.if('*.html', $.htmlmin({collapseWhitespace: true})))
     .pipe(gulp.dest('dist'));
 });
 
 gulp.task('images', () => {
   return gulp.src('app/images/**/*')
-    .pipe($.cache($.imagemin({
+    .pipe($.if($.if.isFile, $.cache($.imagemin({
       progressive: true,
       interlaced: true,
       // don't remove IDs from SVGs, they are often used
       // as hooks for embedding and styling
       svgoPlugins: [{cleanupIDs: false}]
+    }))
+    .on('error', function (err) {
+      console.log(err);
+      this.end();
     })))
     .pipe(gulp.dest('dist/images'));
 });
@@ -110,6 +108,7 @@ gulp.task('serve', ['styles', 'scripts', 'fonts'], () => {
 
   gulp.watch([
     'app/*.html',
+    '.tmp/scripts/**/*.js',
     'app/images/**/*',
     '.tmp/fonts/**/*'
   ]).on('change', reload);
